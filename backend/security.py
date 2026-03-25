@@ -1,7 +1,7 @@
 import os, secrets
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from database import database
@@ -10,15 +10,14 @@ SECRET_KEY  = os.getenv("JWT_SECRET", "super-secret-change-in-production")
 ALGORITHM   = "HS256"
 EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "30"))
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-bearer      = HTTPBearer()
+bearer = HTTPBearer()
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 def create_token(user_id: int) -> str:
     exp = datetime.utcnow() + timedelta(days=EXPIRE_DAYS)

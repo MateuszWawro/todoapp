@@ -13,12 +13,11 @@ async def sync(data: SyncIn, user=Depends(get_current_user)):
     """Wywoływany przez Apple Shortcuts."""
     saved = []
     for m in data.metrics:
+        # SQLite: INSERT OR REPLACE działa przez UNIQUE(user_id, date, type)
         await database.execute(
-            """INSERT INTO health_metrics (user_id, date, type, value, unit, meta)
-               VALUES (:uid, :date, :type, :value, :unit, :meta)
-               ON CONFLICT (user_id, date, type)
-               DO UPDATE SET value=EXCLUDED.value, unit=EXCLUDED.unit, meta=EXCLUDED.meta""",
-            {"uid": user["id"], "date": data.date, "type": m.type,
+            """INSERT OR REPLACE INTO health_metrics (user_id, date, type, value, unit, meta)
+               VALUES (:uid, :date, :type, :value, :unit, :meta)""",
+            {"uid": user["id"], "date": str(data.date), "type": m.type,
              "value": m.value, "unit": m.unit, "meta": str(m.meta or {})}
         )
         saved.append(m.type)
@@ -27,8 +26,8 @@ async def sync(data: SyncIn, user=Depends(get_current_user)):
 
 @router.get("/summary")
 async def summary(user=Depends(get_current_user)):
-    today    = date.today()
-    week_ago = today - timedelta(days=7)
+    today    = str(date.today())
+    week_ago = str(date.today() - timedelta(days=7))
 
     today_rows = await database.fetch_all(
         "SELECT type, value, unit, meta FROM health_metrics WHERE user_id=:uid AND date=:d",
@@ -51,7 +50,7 @@ async def metrics(
     days: int = Query(14, ge=1, le=365),
     user=Depends(get_current_user)
 ):
-    since  = date.today() - timedelta(days=days)
+    since  = str(date.today() - timedelta(days=days))
     query  = "SELECT date, type, value, unit, meta FROM health_metrics WHERE user_id=:uid AND date>=:since"
     params: dict = {"uid": user["id"], "since": since}
     if type:

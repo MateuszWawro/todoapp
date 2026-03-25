@@ -25,14 +25,14 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 
 const auth   = useAuthStore()
 const router = useRouter()
 
-const isLoggedIn = auth.isLoggedIn
+const isLoggedIn = computed(() => auth.isLoggedIn)
 
 onMounted(async () => {
   if (auth.token && !auth.user) {

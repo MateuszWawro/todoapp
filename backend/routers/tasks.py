@@ -44,9 +44,9 @@ async def update_task(task_id: int, data: TaskUpdate, user=Depends(get_current_u
     if data.status is not None:
         fields.append("status=:status"); params["status"] = data.status
         if data.status == "in_progress" and not task["started_at"]:
-            fields.append("started_at=now()")
+            fields.append("started_at=datetime('now')")
         if data.status == "done":
-            fields.append("completed_at=now()")
+            fields.append("completed_at=datetime('now')")
 
     if fields:
         await database.execute(
@@ -68,19 +68,26 @@ async def session(task_id: int, data: SessionIn, user=Depends(get_current_user))
     await _get(task_id, user["id"])
 
     if data.action == "start":
-        # zamknij inne otwarte sesje tego usera
-        await database.execute(
-            """UPDATE task_sessions SET
-                 ended_at=now(),
-                 duration_minutes=GREATEST(1, ROUND(EXTRACT(EPOCH FROM (now()-started_at))/60))
-               WHERE task_id IN (SELECT id FROM tasks WHERE user_id=:uid) AND ended_at IS NULL""",
+        # zamknij inne otwarte sesje
+        open_sessions = await database.fetch_all(
+            """SELECT ts.id, ts.started_at FROM task_sessions ts
+               JOIN tasks t ON t.id=ts.task_id
+               WHERE t.user_id=:uid AND ts.ended_at IS NULL""",
             {"uid": user["id"]}
         )
+        for s in open_sessions:
+            await database.execute(
+                """UPDATE task_sessions SET
+                     ended_at=datetime('now'),
+                     duration_minutes=MAX(1, CAST((julianday('now') - julianday(started_at)) * 1440 AS INTEGER))
+                   WHERE id=:id""",
+                {"id": s["id"]}
+            )
         sid = await database.fetch_val(
             "INSERT INTO task_sessions (task_id) VALUES (:tid) RETURNING id", {"tid": task_id}
         )
         await database.execute(
-            "UPDATE tasks SET status='in_progress', started_at=COALESCE(started_at,now()) WHERE id=:id",
+            "UPDATE tasks SET status='in_progress', started_at=COALESCE(started_at, datetime('now')) WHERE id=:id",
             {"id": task_id}
         )
         return {"session_id": sid, "started": True}
@@ -93,8 +100,8 @@ async def session(task_id: int, data: SessionIn, user=Depends(get_current_user))
             raise HTTPException(400, "Brak aktywnej sesji")
         await database.execute(
             """UPDATE task_sessions SET
-                 ended_at=now(),
-                 duration_minutes=GREATEST(1, ROUND(EXTRACT(EPOCH FROM (now()-started_at))/60)),
+                 ended_at=datetime('now'),
+                 duration_minutes=MAX(1, CAST((julianday('now') - julianday(started_at)) * 1440 AS INTEGER)),
                  notes=:notes
                WHERE id=:id""",
             {"id": sess["id"], "notes": data.notes}
