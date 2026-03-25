@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200">
+<title>Life Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #eeede8; color: #1a1a18; font-size: 15px; }
+input, select, button, textarea { font-family: inherit; font-size: 14px; outline: none; }
+
+/* ── SCREENS ── */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ── LOGIN ── */
+.login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-card { background: #fff; border: 1px solid rgba(0,0,0,0.1); border-radius: 14px; padding: 2rem 2.25rem; width: 340px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
+.login-logo { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: #888; margin-bottom: 1.5rem; }
+.login-label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+.login-input { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 8px 11px; margin-bottom: 12px; font-size: 14px; }
+.login-input:focus { border-color: #378ADD; }
+.login-btn { width: 100%; background: #1a1a18; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 4px; }
+.login-btn:hover { background: #333; }
+.login-hint { font-size: 12px; color: #aaa; text-align: center; margin-top: 12px; }
+.login-err { font-size: 13px; color: #c0392b; margin-top: 8px; text-align: center; display: none; }
+
+/* ── APP SHELL ── */
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 11px 20px; background: #fff; border-bottom: 1px solid rgba(0,0,0,0.08); }
+.topbar-logo { font-size: 15px; font-weight: 600; }
+.topbar-user { font-size: 13px; color: #888; margin-left: 10px; }
+.logout-btn { font-size: 13px; color: #666; background: none; border: 1px solid #ddd; border-radius: 7px; padding: 4px 12px; cursor: pointer; }
+.logout-btn:hover { background: #f5f5f3; }
+
+.tabs { display: flex; background: #fff; border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0 20px; }
+.tab-btn { font-size: 13px; color: #888; padding: 9px 14px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+.tab-btn.active { color: #1a1a18; border-bottom-color: #1a1a18; font-weight: 500; }
+.tab-btn:hover:not(.active) { color: #444; }
+
+.content { padding: 20px; min-height: calc(100vh - 87px); }
+.pane { display: none; }
+.pane.active { display: block; }
+
+/* ── CARDS & METRICS ── */
+.card { background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.metric-card { background: #f5f5f3; border-radius: 9px; padding: 13px 14px; }
+.metric-lbl { font-size: 11px; color: #888; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .04em; }
+.metric-val { font-size: 22px; font-weight: 600; }
+.metric-unit { font-size: 12px; font-weight: 400; color: #888; }
+.metric-delta { font-size: 11px; margin-top: 2px; }
+.up { color: #3b6d11; } .down { color: #a32d2d; }
+
+.section-lbl { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.chart-box { position: relative; height: 210px; }
+.chart-box-sm { position: relative; height: 160px; }
+
+/* ── TASKS ── */
+.task-add-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.task-add-row input { flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 7px 11px; }
+.task-add-row input:focus { border-color: #378ADD; }
+.task-add-row select { border: 1px solid #ddd; border-radius: 8px; padding: 7px 10px; background: #fff; width: 130px; }
+.add-btn { background: #1a1a18; color: #fff; border: none; border-radius: 8px; padding: 7px 16px; cursor: pointer; white-space: nowrap; font-weight: 500; }
+.add-btn:hover { background: #333; }
+
+.task-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.task-list { display: flex; flex-direction: column; gap: 8px; }
+.task-item { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 9px; padding: 10px 14px; }
+.task-item.done { opacity: .5; }
+.chk { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #ccc; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.chk.on { background: #eaf3de; border-color: #3b6d11; color: #3b6d11; }
+.task-txt { flex: 1; font-size: 14px; }
+.cat-badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; }
+.cat-personal { background: #e6f1fb; color: #185fa5; }
+.cat-work { background: #faeeda; color: #854f0b; }
+.cat-health { background: #eaf3de; color: #3b6d11; }
+.task-time { font-size: 12px; color: #888; white-space: nowrap; min-width: 50px; text-align: right; }
+.timer-btn { font-size: 11px; padding: 3px 10px; border-radius: 7px; border: 1px solid #ddd; background: none; color: #666; cursor: pointer; white-space: nowrap; }
+.timer-btn:hover { background: #f5f5f3; }
+.timer-btn.running { border-color: #c0392b; color: #c0392b; }
+
+/* ── CORRELATIONS ── */
+.corr-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.07); }
+.corr-row:last-child { border-bottom: none; }
+.corr-lbl { flex: 1; font-size: 13px; }
+.corr-bar-bg { width: 110px; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+.corr-bar-fill { height: 100%; border-radius: 3px; }
+.corr-num { font-size: 13px; font-weight: 600; width: 42px; text-align: right; }
+
+/* ── API tab ── */
+.api-endpoint { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(0,0,0,0.07); font-size: 13px; }
+.api-endpoint:last-child { border-bottom: none; }
+.method { font-size: 11px; padding: 2px 8px; border-radius: 5px; font-weight: 600; min-width: 44px; text-align: center; }
+.m-get { background: #e6f1fb; color: #185fa5; }
+.m-post { background: #eaf3de; color: #3b6d11; }
+.m-patch { background: #faeeda; color: #854f0b; }
+.ep-path { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; flex: 1; }
+.ep-desc { color: #888; font-size: 12px; }
+.code-block { background: #1a1a18; border-radius: 9px; padding: 14px 16px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #9fe1cb; line-height: 1.65; overflow-x: auto; white-space: pre; }
+
+/* ── CHART legend ── */
+.legend { display: flex; gap: 16px; font-size: 12px; color: #888; margin-bottom: 8px; flex-wrap: wrap; }
+.legend span { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="screen active">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">life dashboard</div>
+      <div class="login-sub">twoje dane, twoje życie</div>
+      <label class="login-label">login</label>
+      <input class="login-input" id="inp-user" type="text" placeholder="mateusz / agnieszka" />
+      <label class="login-label">hasło</label>
+      <input class="login-input" id="inp-pass" type="password" placeholder="••••••••" />
+      <div class="login-err" id="login-err">Nieprawidłowy login lub hasło</div>
+      <button class="login-btn" onclick="doLogin()">zaloguj się</button>
+      <div class="login-hint">demo: mateusz/demo lub agnieszka/demo</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" class="screen">
+  <div class="topbar">
+    <div style="display:flex;align-items:center">
+      <span class="topbar-logo">life dashboard</span>
+      <span class="topbar-user" id="topbar-name"></span>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">wyloguj</button>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('overview',this)">przegląd</button>
+    <button class="tab-btn" onclick="switchTab('sleep',this)">sen</button>
+    <button class="tab-btn" onclick="switchTab('tasks',this)">zadania</button>
+    <button class="tab-btn" onclick="switchTab('corr',this)">korelacje</button>
+    <button class="tab-btn" onclick="switchTab('api',this)">API</button>
+  </div>
+  <div class="content">
+
+    <!-- PRZEGLĄD -->
+    <div id="pane-overview" class="pane active">
+      <div class="metric-grid" id="overview-metrics"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="section-lbl">aktywność — ostatnie 7 dni</div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:#378ADD"></span>kroki</span>
+            <span><span class="legend-dot" style="background:#D4537E"></span>kalorie</span>
+          </div>
+          <div class="chart-box"><canvas id="c-activity"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="section-lbl">sen — ostatnie 7 dni</div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:#534AB7"></span>godziny snu</span>
+            <span><span class="legend-dot" style="background:#ccc;border:1px dashed #999"></span>cel 8h</span>
+          </div>
+          <div class="chart-box"><canvas id="c-sleep7"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEN -->
+    <div id="pane-sleep" class="pane">
+      <div class="metric-grid" id="sleep-metrics"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="section-lbl">sen vs cel (8h) — ostatnie 14 dni</div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:#1D9E75"></span>≥ 8h</span>
+            <span><span class="legend-dot" style="background:#378ADD"></span>7–8h</span>
+            <span><span class="legend-dot" style="background:#D85A30"></span>&lt; 7h</span>
+          </div>
+          <div class="chart-box"><canvas id="c-sleep14"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="section-lbl">jakość snu — ostatnie 14 dni</div>
+          <div class="chart-box"><canvas id="c-quality"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZADANIA -->
+    <div id="pane-tasks" class="pane">
+      <div class="task-add-row">
+        <input id="new-task-txt" type="text" placeholder="nowe zadanie..." onkeydown="if(event.key==='Enter')addTask()" />
+        <select id="new-task-cat">
+          <option value="personal">osobiste</option>
+          <option value="work">praca</option>
+          <option value="health">zdrowie</option>
+        </select>
+        <button class="add-btn" onclick="addTask()">+ dodaj</button>
+      </div>
+      <div class="task-metrics" id="task-metrics"></div>
+      <div class="task-list" id="task-list"></div>
+    </div>
+
+    <!-- KORELACJE -->
+    <div id="pane-corr" class="pane">
+      <div class="two-col">
+        <div class="card">
+          <div class="section-lbl">korelacje z produktywnością</div>
+          <div id="corr-list"></div>
+        </div>
+        <div class="card">
+          <div class="section-lbl">sen vs ukończone zadania</div>
+          <div class="chart-box"><canvas id="c-scatter"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API -->
+    <div id="pane-api" class="pane">
+      <div class="two-col">
+        <div class="card">
+          <div class="section-lbl">endpointy</div>
+          <div class="api-endpoint"><span class="method m-post">POST</span><span class="ep-path">/api/auth/login</span><span class="ep-desc">logowanie → JWT</span></div>
+          <div class="api-endpoint"><span class="method m-get">GET</span><span class="ep-path">/api/auth/me</span><span class="ep-desc">dane usera</span></div>
+          <div class="api-endpoint"><span class="method m-post">POST</span><span class="ep-path">/api/health/sync</span><span class="ep-desc">sync z Shortcuts</span></div>
+          <div class="api-endpoint"><span class="method m-get">GET</span><span class="ep-path">/api/health/summary</span><span class="ep-desc">podsumowanie</span></div>
+          <div class="api-endpoint"><span class="method m-get">GET</span><span class="ep-path">/api/health/metrics</span><span class="ep-desc">?type=sleep&days=14</span></div>
+          <div class="api-endpoint"><span class="method m-get">GET</span><span class="ep-path">/api/tasks</span><span class="ep-desc">lista zadań</span></div>
+          <div class="api-endpoint"><span class="method m-post">POST</span><span class="ep-path">/api/tasks</span><span class="ep-desc">nowe zadanie</span></div>
+          <div class="api-endpoint"><span class="method m-patch">PATCH</span><span class="ep-path">/api/tasks/{id}</span><span class="ep-desc">aktualizacja</span></div>
+          <div class="api-endpoint"><span class="method m-post">POST</span><span class="ep-path">/api/tasks/{id}/sessions</span><span class="ep-desc">start/stop timer</span></div>
+          <div class="api-endpoint"><span class="method m-get">GET</span><span class="ep-path">/api/analytics/correlations</span><span class="ep-desc">korelacje</span></div>
+          <div class="api-endpoint"><span class="method m-get">GET</span><span class="ep-path">/api/analytics/weekly</span><span class="ep-desc">raport tygodniowy</span></div>
+        </div>
+        <div class="card">
+          <div class="section-lbl">payload Shortcuts → /api/health/sync</div>
+          <div class="code-block">{
+  "date": "2026-03-25",
+  "metrics": [
+    {
+      "type": "steps",
+      "value": 8432,
+      "unit": "count"
+    },
+    {
+      "type": "sleep",
+      "value": 7.5,
+      "unit": "hours",
+      "meta": {
+        "bedtime": "23:15",
+        "wake_time": "06:45"
+      }
+    },
+    {
+      "type": "workout",
+      "value": 45,
+      "unit": "minutes",
+      "meta": {
+        "workout_type": "Running",
+        "calories": 420,
+        "avg_heart_rate": 148
+      }
+    },
+    {
+      "type": "heart_rate",
+      "value": 62,
+      "unit": "bpm",
+      "meta": { "resting": true }
+    }
+  ]
+}</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const USERS = {
+  mateusz:   { pass: 'demo', display: 'Mateusz' },
+  agnieszka: { pass: 'demo', display: 'Agnieszka' }
+};
+
+const DATA = {
+  mateusz: {
+    steps:   [7200, 9100, 6800, 11200, 8400, 5600, 8432],
+    calories:[320,  0,    410,  380,   0,    0,    420],
+    sleep7:  [6.5,  7.2,  8.1,  6.8,   7.5,  9.0,  7.5],
+    sleep14: [8.1,  6.8,  7.5,  9.0,   7.5,  6.2,  8.3, 7.8, 6.9, 8.5, 7.1, 8.0, 6.5, 7.2],
+    quality: [85,   68,   80,   90,    79,   65,   84,  78, 70, 86, 74, 82, 72, 78],
+    tasks: [
+      { id:1, txt:'Update Ansible playbook dla GLPI',    cat:'work',     done:true,  elapsed:87,  running:false, start:null },
+      { id:2, txt:'Backup Proxmox VM',                   cat:'work',     done:false, elapsed:0,   running:false, start:null },
+      { id:3, txt:'Bieganie 5km',                        cat:'health',   done:true,  elapsed:34,  running:false, start:null },
+      { id:4, txt:'Master thesis — rozdział 2',          cat:'personal', done:false, elapsed:42,  running:false, start:null },
+      { id:5, txt:'Skonfigurować Wazuh alert',           cat:'work',     done:false, elapsed:0,   running:false, start:null },
+    ],
+    scatter: [{x:6.5,y:1},{x:7.2,y:2},{x:8.1,y:4},{x:6.8,y:1},{x:7.5,y:3},{x:9.0,y:5},{x:7.5,y:3},{x:6.2,y:1},{x:8.3,y:4},{x:7.8,y:3},{x:6.9,y:2},{x:8.5,y:5},{x:7.1,y:2},{x:8.0,y:4}],
+  },
+  agnieszka: {
+    steps:   [5100, 8300, 7200, 9400, 6100, 7800, 6200],
+    calories:[0,    280,  0,    350,  310,  0,    0],
+    sleep7:  [7.8,  6.5,  8.5,  7.0,   8.2,  7.1,  8.0],
+    sleep14: [8.5,  7.0,  8.2,  7.1,   8.0,  7.8,  6.5, 9.0, 7.2, 8.4, 6.8, 8.1, 7.5, 8.3],
+    quality: [88,   72,   84,   74,    82,   80,   65,  91, 78, 86, 70, 83, 77, 85],
+    tasks: [
+      { id:1, txt:'Pilates rano',              cat:'health',   done:true,  elapsed:50, running:false, start:null },
+      { id:2, txt:'Zakupy na weekend',         cat:'personal', done:false, elapsed:0,  running:false, start:null },
+      { id:3, txt:'Przeczytać książkę rozdz.5',cat:'personal', done:false, elapsed:22, running:false, start:null },
+      { id:4, txt:'Zaplanować wakacje',        cat:'personal', done:false, elapsed:0,  running:false, start:null },
+    ],
+    scatter: [{x:7.8,y:2},{x:6.5,y:1},{x:8.5,y:4},{x:7.0,y:2},{x:8.2,y:4},{x:7.1,y:2},{x:8.0,y:3},{x:9.0,y:5},{x:7.2,y:2},{x:8.4,y:4},{x:6.8,y:1},{x:8.1,y:3},{x:7.5,y:3},{x:8.3,y:4}],
+  }
+};
+
+const DAYS7  = ['Pn','Wt','Śr','Cz','Pt','Sb','Nd'];
+const DAYS14 = ['12.03','13.03','14.03','15.03','16.03','17.03','18.03','19.03','20.03','21.03','22.03','23.03','24.03','25.03'];
+
+let currentUser = null;
+let charts = {};
+let timerTick = null;
+let nextId = 200;
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+function doLogin() {
+  const u = document.getElementById('inp-user').value.trim().toLowerCase();
+  const p = document.getElementById('inp-pass').value;
+  if (USERS[u] && USERS[u].pass === p) {
+    currentUser = u;
+    document.getElementById('login-err').style.display = 'none';
+    document.getElementById('login-screen').classList.remove('active');
+    document.getElementById('app-screen').classList.add('active');
+    document.getElementById('topbar-name').textContent = '— ' + USERS[u].display;
+    // reset to overview tab
+    document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+    document.querySelectorAll('.pane').forEach((p,i) => p.classList.toggle('active', i===0));
+    renderOverview();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+}
+
+function doLogout() {
+  if (timerTick) clearInterval(timerTick);
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  charts = {};
+  currentUser = null;
+  document.getElementById('app-screen').classList.remove('active');
+  document.getElementById('login-screen').classList.add('active');
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pane-' + name).classList.add('active');
+  if (name === 'overview')  renderOverview();
+  if (name === 'sleep')     renderSleep();
+  if (name === 'tasks')     renderTasks();
+  if (name === 'corr')      renderCorr();
+}
+
+// ─── OVERVIEW ────────────────────────────────────────────────────────────────
+function renderOverview() {
+  const d = DATA[currentUser];
+  const avgSleep = (d.sleep7.reduce((a,b)=>a+b,0)/d.sleep7.length).toFixed(1);
+  const workouts = d.calories.filter(c=>c>0).length;
+  const avgQ = Math.round(d.quality.reduce((a,b)=>a+b,0)/d.quality.length);
+  const todaySteps = d.steps[d.steps.length-1];
+  const todaySleep = d.sleep7[d.sleep7.length-1];
+
+  document.getElementById('overview-metrics').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-lbl">kroki dziś</div>
+      <div class="metric-val">${todaySteps.toLocaleString('pl')}<span class="metric-unit"> kr</span></div>
+      <div class="metric-delta up">↑ +12% vs wczoraj</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-lbl">sen dziś</div>
+      <div class="metric-val">${todaySleep}<span class="metric-unit"> godz.</span></div>
+      <div class="metric-delta ${todaySleep>=8?'up':'down'}">${todaySleep>=8?'↑ powyżej celu':'↓ poniżej celu'}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-lbl">treningi / tydzień</div>
+      <div class="metric-val">${workouts}<span class="metric-unit"> / 7 dni</span></div>
+      <div class="metric-delta up">cel: 3</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-lbl">jakość snu śr.</div>
+      <div class="metric-val">${avgQ}<span class="metric-unit">%</span></div>
+      <div class="metric-delta up">ostatnie 7 dni</div>
+    </div>`;
+
+  destroyChart('c-activity');
+  charts['c-activity'] = new Chart(document.getElementById('c-activity'), {
+    type: 'bar',
+    data: { labels: DAYS7, datasets: [
+      { label:'kroki', data: d.steps, backgroundColor:'#378ADD', yAxisID:'y', borderRadius:3 },
+      { label:'kalorie', data: d.calories, backgroundColor:'#D4537E', yAxisID:'y2', borderRadius:3 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+      scales: {
+        y:  { position:'left',  ticks:{font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'} },
+        y2: { position:'right', ticks:{font:{size:10}}, grid:{display:false} }
+      }}
+  });
+
+  destroyChart('c-sleep7');
+  charts['c-sleep7'] = new Chart(document.getElementById('c-sleep7'), {
+    type: 'line',
+    data: { labels: DAYS7, datasets: [
+      { label:'sen', data:d.sleep7, borderColor:'#534AB7', backgroundColor:'rgba(83,74,183,0.08)', fill:true, tension:0.4, pointRadius:4 },
+      { label:'cel', data:Array(7).fill(8), borderColor:'rgba(0,0,0,0.2)', borderDash:[5,4], pointRadius:0 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+      scales: {
+        y: { min:4, max:10, ticks:{font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'} },
+        x: { ticks:{font:{size:10}} }
+      }}
+  });
+}
+
+// ─── SLEEP ───────────────────────────────────────────────────────────────────
+function renderSleep() {
+  const d = DATA[currentUser];
+  const avg = (d.sleep14.reduce((a,b)=>a+b,0)/d.sleep14.length).toFixed(1);
+  const min = Math.min(...d.sleep14).toFixed(1);
+  const max = Math.max(...d.sleep14).toFixed(1);
+  const avgQ = Math.round(d.quality.reduce((a,b)=>a+b,0)/d.quality.length);
+
+  document.getElementById('sleep-metrics').innerHTML = `
+    <div class="metric-card"><div class="metric-lbl">średni sen</div><div class="metric-val">${avg}<span class="metric-unit"> godz.</span></div></div>
+    <div class="metric-card"><div class="metric-lbl">najkrótszy</div><div class="metric-val">${min}<span class="metric-unit"> godz.</span></div><div class="metric-delta down">↓ niedobór</div></div>
+    <div class="metric-card"><div class="metric-lbl">najdłuższy</div><div class="metric-val">${max}<span class="metric-unit"> godz.</span></div><div class="metric-delta up">↑ świetnie</div></div>
+    <div class="metric-card"><div class="metric-lbl">jakość śr.</div><div class="metric-val">${avgQ}<span class="metric-unit">%</span></div></div>`;
+
+  destroyChart('c-sleep14');
+  charts['c-sleep14'] = new Chart(document.getElementById('c-sleep14'), {
+    type: 'bar',
+    data: { labels: DAYS14, datasets: [
+      { label:'sen', data:d.sleep14, backgroundColor:d.sleep14.map(v=>v>=8?'#1D9E75':v>=7?'#378ADD':'#D85A30'), borderRadius:3 },
+      { label:'cel 8h', data:Array(14).fill(8), type:'line', borderColor:'rgba(0,0,0,0.25)', borderDash:[5,4], pointRadius:0 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+      scales: {
+        y: { min:4, max:10, ticks:{font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'} },
+        x: { ticks:{font:{size:9}, maxRotation:45, autoSkip:false} }
+      }}
+  });
+
+  destroyChart('c-quality');
+  charts['c-quality'] = new Chart(document.getElementById('c-quality'), {
+    type: 'line',
+    data: { labels: DAYS14, datasets: [
+      { label:'jakość', data:d.quality, borderColor:'#534AB7', backgroundColor:'rgba(83,74,183,0.07)', fill:true, tension:0.4, pointRadius:2 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+      scales: {
+        y: { min:50, max:100, ticks:{font:{size:10}, callback:v=>v+'%'}, grid:{color:'rgba(0,0,0,0.05)'} },
+        x: { ticks:{font:{size:9}, maxRotation:45, autoSkip:false} }
+      }}
+  });
+}
+
+// ─── TASKS ───────────────────────────────────────────────────────────────────
+function renderTasks() {
+  const tasks = DATA[currentUser].tasks;
+  const done = tasks.filter(t=>t.done).length;
+  const totalMin = tasks.reduce((a,t)=>a+t.elapsed,0);
+  const hrs = Math.floor(totalMin/60), mins = totalMin%60;
+
+  document.getElementById('task-metrics').innerHTML = `
+    <div class="metric-card"><div class="metric-lbl">do zrobienia</div><div class="metric-val">${tasks.length-done}</div></div>
+    <div class="metric-card"><div class="metric-lbl">ukończone</div><div class="metric-val">${done}</div><div class="metric-delta up">dziś</div></div>
+    <div class="metric-card"><div class="metric-lbl">czas pracy</div><div class="metric-val">${hrs>0?hrs+'h ':''}<span style="font-size:18px">${mins}</span><span class="metric-unit">min</span></div></div>`;
+
+  document.getElementById('task-list').innerHTML = tasks.map(t => `
+    <div class="task-item ${t.done?'done':''}" id="ti-${t.id}">
+      <div class="chk ${t.done?'on':''}" onclick="toggleDone(${t.id})">${t.done?'✓':''}</div>
+      <div class="task-txt">${t.txt}</div>
+      <span class="cat-badge cat-${t.cat}">${t.cat}</span>
+      <span class="task-time">${fmtTime(t.elapsed)}</span>
+      ${!t.done ? `<button class="timer-btn ${t.running?'running':''}" onclick="toggleTimer(${t.id})">${t.running?'⏹ stop':'▶ start'}</button>` : ''}
+    </div>`).join('');
+}
+
+function fmtTime(min) {
+  if (!min) return '—';
+  const h = Math.floor(min/60), m = min%60;
+  return h>0 ? `${h}h ${m}min` : `${m}min`;
+}
+
+function toggleDone(id) {
+  const t = DATA[currentUser].tasks.find(t=>t.id===id);
+  if (!t) return;
+  if (t.running) { t.elapsed += Math.round((Date.now()-t.start)/60000); t.running=false; t.start=null; }
+  t.done = !t.done;
+  renderTasks();
+}
+
+function toggleTimer(id) {
+  const tasks = DATA[currentUser].tasks;
+  // stop any running
+  tasks.forEach(t => {
+    if (t.running && t.id!==id) {
+      t.elapsed += Math.round((Date.now()-t.start)/60000);
+      t.running=false; t.start=null;
+    }
+  });
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  if (t.running) {
+    t.elapsed += Math.round((Date.now()-t.start)/60000);
+    t.running=false; t.start=null;
+    if (timerTick) { clearInterval(timerTick); timerTick=null; }
+  } else {
+    t.running=true; t.start=Date.now();
+    if (!timerTick) timerTick = setInterval(renderTasks, 30000);
+  }
+  renderTasks();
+}
+
+function addTask() {
+  const inp = document.getElementById('new-task-txt');
+  const txt = inp.value.trim();
+  if (!txt) return;
+  const cat = document.getElementById('new-task-cat').value;
+  DATA[currentUser].tasks.unshift({ id:nextId++, txt, cat, done:false, elapsed:0, running:false, start:null });
+  inp.value = '';
+  renderTasks();
+}
+
+// ─── CORRELATIONS ────────────────────────────────────────────────────────────
+function renderCorr() {
+  const d = DATA[currentUser];
+
+  const corrData = [
+    { label:'sen → produktywność',       val:0.72, pos:true },
+    { label:'trening → jakość snu',      val:0.61, pos:true },
+    { label:'kroki → energia',           val:0.54, pos:true },
+    { label:'późne wstawanie → zadania', val:-0.48, pos:false },
+    { label:'sen < 7h → gorszy nastrój', val:-0.39, pos:false },
+  ];
+
+  document.getElementById('corr-list').innerHTML = corrData.map(c => `
+    <div class="corr-row">
+      <span class="corr-lbl">${c.label}</span>
+      <div class="corr-bar-bg"><div class="corr-bar-fill" style="width:${Math.abs(c.val)*100}%;background:${c.pos?'#1D9E75':'#D85A30'}"></div></div>
+      <span class="corr-num" style="color:${c.pos?'#3b6d11':'#a32d2d'}">${c.pos?'+':''}${c.val.toFixed(2)}</span>
+    </div>`).join('');
+
+  destroyChart('c-scatter');
+  charts['c-scatter'] = new Chart(document.getElementById('c-scatter'), {
+    type: 'scatter',
+    data: { datasets: [{ data:d.scatter, backgroundColor:'#378ADD', pointRadius:6 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+      scales: {
+        x: { title:{display:true, text:'sen (godz.)', font:{size:11}}, min:5.5, max:10, ticks:{font:{size:10}} },
+        y: { title:{display:true, text:'zadania ukończone', font:{size:11}}, min:0, max:6, ticks:{stepSize:1, font:{size:10}} }
+      }}
+  });
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function destroyChart(id) {
+  if (charts[id]) { try { charts[id].destroy(); } catch(e){} delete charts[id]; }
+}
+</script>
+</body>
+</html>
