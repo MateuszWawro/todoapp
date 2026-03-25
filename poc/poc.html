@@ -105,6 +105,43 @@ input, select, button, textarea { font-family: inherit; font-size: 14px; outline
 .legend { display: flex; gap: 16px; font-size: 12px; color: #888; margin-bottom: 8px; flex-wrap: wrap; }
 .legend span { display: flex; align-items: center; gap: 5px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 700px) {
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .task-metrics { grid-template-columns: repeat(3, 1fr); }
+  .content { padding: 12px; }
+  .card { padding: 12px; margin-bottom: 10px; }
+  .tabs { overflow-x: auto; padding: 0 10px; -webkit-overflow-scrolling: touch; }
+  .tab-btn { white-space: nowrap; padding: 9px 10px; font-size: 12px; }
+  .topbar { padding: 10px 14px; }
+  .topbar-logo { font-size: 14px; }
+  .task-add-row { flex-wrap: wrap; }
+  .task-add-row input { min-width: 0; }
+  .task-add-row select { width: calc(50% - 4px); }
+  .add-btn { width: calc(50% - 4px); text-align: center; }
+  .task-item { flex-wrap: wrap; gap: 6px; }
+  .task-txt { width: calc(100% - 30px); order: 1; }
+  .cat-badge { order: 2; }
+  .task-time { order: 3; margin-left: auto; }
+  .timer-btn { order: 4; }
+  .ep-desc { display: none; }
+  .corr-bar-bg { width: 70px; }
+  .chart-box { height: 180px; }
+  .chart-box-sm { height: 140px; }
+  .login-wrap { align-items: flex-start; padding-top: 2rem; }
+  .login-card { width: calc(100% - 2rem); margin: 0 1rem; }
+  .corr-row { gap: 8px; }
+  .corr-lbl { font-size: 12px; }
+}
+
+@media (max-width: 400px) {
+  .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .metric-val { font-size: 18px; }
+  .task-metrics { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .metric-card { padding: 10px 11px; }
+}
 </style>
 </head>
 <body>
